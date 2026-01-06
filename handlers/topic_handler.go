@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/repository"
@@ -14,14 +13,13 @@ type CreateTopicRequest struct {
 	Title string `json:"title"`
 }
 
-// CreateTopic creates a new topic owned by the logged-in user
+type UpdateTopicRequest struct {
+	Title string `json:"title"`
+}
+
+// CreateTopic creates a new topic
 func CreateTopic(w http.ResponseWriter, r *http.Request) {
-	ctxUserID := r.Context().Value(middleware.UserIDKey)
-	userID, ok := ctxUserID.(int)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	userID := r.Context().Value(middleware.UserIDKey).(int)
 
 	var req CreateTopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" {
@@ -52,38 +50,50 @@ func GetAllTopics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(topics)
 }
 
-// DeleteTopic deletes a topic only if the user owns it
-func DeleteTopic(w http.ResponseWriter, r *http.Request) {
-	ctxUserID := r.Context().Value(middleware.UserIDKey)
-	userID, ok := ctxUserID.(int)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+// UpdateTopic updates a topic title
+func UpdateTopic(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(int)
 
-	// Extract ID from URL path: /topics/{id}
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 3 {
-		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
-		return
-	}
+	topicID, _ := strconv.Atoi(r.URL.Query().Get("id"))
 
-	id, err := strconv.Atoi(parts[2])
+	ownerID, err := repository.GetTopicOwner(topicID)
 	if err != nil {
-		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		http.Error(w, "Topic not found", http.StatusNotFound)
 		return
 	}
 
-	err = repository.DeleteTopic(id, userID)
+	if ownerID != userID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	var req UpdateTopicRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = repository.UpdateTopic(topicID, req.Title)
+	if err != nil {
+		http.Error(w, "Failed to update topic", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// DeleteTopic deletes a topic
+func DeleteTopic(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(int)
+	topicID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+
+	err := repository.DeleteTopic(topicID, userID)
 	if err != nil {
 		if err.Error() == "forbidden" {
 			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		} else if err.Error() == "topic not found" {
+		} else {
 			http.Error(w, "Topic not found", http.StatusNotFound)
-			return
 		}
-		http.Error(w, "Failed to delete topic", http.StatusInternalServerError)
 		return
 	}
 

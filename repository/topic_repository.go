@@ -51,15 +51,34 @@ func GetAllTopics() ([]models.Topic, error) {
 	return topics, nil
 }
 
-// DeleteTopic deletes a topic only if the user is the owner
-func DeleteTopic(id, userID int) error {
+// GetTopicOwner returns the userID of the topic owner
+func GetTopicOwner(topicID int) (int, error) {
 	var ownerID int
 	err := db.DB.QueryRow(
 		"SELECT user_id FROM topics WHERE id = ?",
-		id,
+		topicID,
 	).Scan(&ownerID)
+
 	if err != nil {
-		return errors.New("topic not found")
+		return 0, errors.New("topic not found")
+	}
+	return ownerID, nil
+}
+
+// UpdateTopic updates the title of a topic
+func UpdateTopic(topicID int, title string) error {
+	_, err := db.DB.Exec(
+		"UPDATE topics SET title = ? WHERE id = ?",
+		title, topicID,
+	)
+	return err
+}
+
+// DeleteTopic deletes a topic only if the user is the owner
+func DeleteTopic(id, userID int) error {
+	ownerID, err := GetTopicOwner(id)
+	if err != nil {
+		return err
 	}
 
 	if ownerID != userID {
@@ -69,3 +88,5 @@ func DeleteTopic(id, userID int) error {
 	_, err = db.DB.Exec("DELETE FROM topics WHERE id = ?", id)
 	return err
 }
+
+

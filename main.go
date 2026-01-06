@@ -41,24 +41,21 @@ func main() {
 	})))
 
 	// Topics collection (GET / POST)
-mux.HandleFunc("/topics", middleware.Cors(middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		handlers.GetAllTopics(w, r)
-	case http.MethodPost:
-		handlers.CreateTopic(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-})))
+	mux.HandleFunc("/topics", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetAllTopics(w, r) // public
+		case http.MethodPost:
+			// protect only creation
+			middleware.AuthMiddleware(handlers.CreateTopic)(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 
-// Topics item route (DELETE /topics/{id})
+
+	// Topics item route (PUT / DELETE /topics/{id})
 mux.HandleFunc("/topics/", middleware.Cors(middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Extract ID from URL path: /topics/{id}
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 3 {
@@ -72,12 +69,19 @@ mux.HandleFunc("/topics/", middleware.Cors(middleware.AuthMiddleware(func(w http
 		return
 	}
 
-	// Put ID into query param so DeleteTopic handler can use it
+	// Put ID into query param so handlers can use it
 	q := r.URL.Query()
 	q.Set("id", strconv.Itoa(id))
 	r.URL.RawQuery = q.Encode()
 
-	handlers.DeleteTopic(w, r)
+	switch r.Method {
+	case http.MethodPut:
+		handlers.UpdateTopic(w, r)  
+	case http.MethodDelete:
+		handlers.DeleteTopic(w, r)  
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 })))
 
 
