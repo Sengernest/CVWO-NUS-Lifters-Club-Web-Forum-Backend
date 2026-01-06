@@ -13,7 +13,6 @@ func ConnectDatabase() {
 	var err error
 
 	DB, err = sql.Open("sqlite", "forum.db")
-
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -32,8 +31,10 @@ func createTables() {
 
 	topicTable := `
 	CREATE TABLE IF NOT EXISTS topics (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 	);`
 
 	postTable := `
