@@ -55,6 +55,40 @@ func GetAllPosts() ([]models.Post, error) {
 	return posts, nil
 }
 
+func GetPostsByTopic(topicID int) ([]models.Post, error) {
+	rows, err := db.DB.Query(
+		`SELECT id, title, content, topic_id, user_id, likes, created_at
+		 FROM posts
+		 WHERE topic_id = ?
+		 ORDER BY created_at DESC`,
+		topicID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []models.Post
+	for rows.Next() {
+		var p models.Post
+		if err := rows.Scan(
+			&p.ID,
+			&p.Title,
+			&p.Content,
+			&p.TopicID,
+			&p.UserID,
+			&p.Likes,
+			&p.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+
+	return posts, nil
+}
+
+
 func GetPostOwner(postID int) (int, error) {
 	var ownerID int
 	err := db.DB.QueryRow(
