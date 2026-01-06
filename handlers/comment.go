@@ -30,7 +30,7 @@ func CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commentID, _ := res.LastInsertId() // Get auto-generated comment ID
+	commentID, _ := res.LastInsertId() 
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{

@@ -40,36 +40,42 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	var creds Credentials
-	json.NewDecoder(r.Body).Decode(&creds)
+    var creds Credentials
+    json.NewDecoder(r.Body).Decode(&creds)
 
-	var storedHash string
-	var userID int
+    var storedHash string
+    var userID int
+    var username string
 
-	err := db.DB.QueryRow(
-		"SELECT id, password_hash FROM users WHERE username = ?",
-		creds.Username,
-	).Scan(&userID, &storedHash)
+    err := db.DB.QueryRow(
+        "SELECT id, username, password_hash FROM users WHERE username = ?",
+        creds.Username,
+    ).Scan(&userID, &username, &storedHash)
 
-	if err == sql.ErrNoRows {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
+    if err == sql.ErrNoRows {
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+        return
+    }
 
-	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(creds.Password))
-	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
+    err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(creds.Password))
+    if err != nil {
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+        return
+    }
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
-	})
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+        "user_id": userID,
+        "username": username,
+        "exp":     time.Now().Add(24 * time.Hour).Unix(),
+    })
 
-	tokenString, _ := token.SignedString(jwtKey)
+    tokenString, _ := token.SignedString(jwtKey)
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"token": tokenString,
-	})
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "token": tokenString,
+        "user": map[string]interface{}{
+            "id":       userID,
+            "username": username,
+        },
+    })
 }

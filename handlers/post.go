@@ -31,11 +31,43 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postID, _ := res.LastInsertId() // Get the auto-generated post ID
+	postID, _ := res.LastInsertId() 
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{
 		"post_id": int(postID),
 	})
 }
+
+func GetAllPosts(w http.ResponseWriter, r *http.Request) {
+	// Fetch posts from DB
+	rows, err := db.DB.Query("SELECT id, title, content, topic_id FROM posts ORDER BY id DESC")
+	if err != nil {
+		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type PostResponse struct {
+		ID      int    `json:"id"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
+		TopicID int    `json:"topic_id"`
+	}
+
+	var posts []PostResponse
+	for rows.Next() {
+		var p PostResponse
+		if err := rows.Scan(&p.ID, &p.Title, &p.Content, &p.TopicID); err != nil {
+			http.Error(w, "Error scanning posts", http.StatusInternalServerError)
+			return
+		}
+		posts = append(posts, p)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+}
+
+
 

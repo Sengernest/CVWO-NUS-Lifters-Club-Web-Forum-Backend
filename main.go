@@ -11,25 +11,28 @@ import (
 )
 
 func main() {
-	db.ConnectDatabase()
-	http.HandleFunc("/register", handlers.Register)
-	http.HandleFunc("/login", handlers.Login)
+    db.ConnectDatabase()
 
-	// Protected routes
-	http.HandleFunc("/posts", middleware.AuthMiddleware(handlers.CreatePost))
-	http.HandleFunc("/comments", middleware.AuthMiddleware(handlers.CreateComment))
-	http.HandleFunc("/delete-post", middleware.AuthMiddleware(handlers.DeletePost))
-	http.HandleFunc("/delete-comment", middleware.AuthMiddleware(handlers.DeleteComment))
-	http.HandleFunc("/edit-post", middleware.AuthMiddleware(handlers.EditPost))
-	http.HandleFunc("/edit-comment", middleware.AuthMiddleware(handlers.EditComment))
-	http.HandleFunc("/like-post", middleware.AuthMiddleware(handlers.LikePost))
-	http.HandleFunc("/like-comment", middleware.AuthMiddleware(handlers.LikeComment))
+    // Public routes
+    http.HandleFunc("/register", middleware.Cors(handlers.Register))
+    http.HandleFunc("/login", middleware.Cors(handlers.Login))
 
+    // Protected routes (Auth + CORS)
+    http.HandleFunc("/posts", middleware.Cors(middleware.AuthMiddleware(handlers.CreatePost)))
+	http.HandleFunc("/getposts", middleware.Cors(middleware.AuthMiddleware(handlers.GetAllPosts)))
+    http.HandleFunc("/comments", middleware.Cors(middleware.AuthMiddleware(handlers.CreateComment)))
+    http.HandleFunc("/delete-post", middleware.Cors(middleware.AuthMiddleware(handlers.DeletePost)))
+    http.HandleFunc("/delete-comment", middleware.Cors(middleware.AuthMiddleware(handlers.DeleteComment)))
+    http.HandleFunc("/edit-post", middleware.Cors(middleware.AuthMiddleware(handlers.EditPost)))
+    http.HandleFunc("/edit-comment", middleware.Cors(middleware.AuthMiddleware(handlers.EditComment)))
+    http.HandleFunc("/like-post", middleware.Cors(middleware.AuthMiddleware(handlers.LikePost)))
+    http.HandleFunc("/like-comment", middleware.Cors(middleware.AuthMiddleware(handlers.LikeComment)))
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "NUS Lifters Club backend running with SQLite")
-	})
+    // Root route
+    http.HandleFunc("/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintln(w, "NUS Lifters Club backend running with SQLite")
+    }))
 
-	fmt.Println("Server running on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+    fmt.Println("Server running on http://localhost:8080")
+    http.ListenAndServe(":8080", nil)
 }
