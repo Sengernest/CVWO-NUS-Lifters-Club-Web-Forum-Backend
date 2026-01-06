@@ -20,6 +20,10 @@ func main() {
 	http.HandleFunc("/comments", middleware.AuthMiddleware(handlers.CreateComment))
 	http.HandleFunc("/delete-post", middleware.AuthMiddleware(handlers.DeletePost))
 	http.HandleFunc("/delete-comment", middleware.AuthMiddleware(handlers.DeleteComment))
+	http.HandleFunc("/edit-post", middleware.AuthMiddleware(handlers.EditPost))
+	http.HandleFunc("/edit-comment", middleware.AuthMiddleware(handlers.EditComment))
+	http.HandleFunc("/like-post", middleware.AuthMiddleware(handlers.LikePost))
+	http.HandleFunc("/like-comment", middleware.AuthMiddleware(handlers.LikeComment))
 
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

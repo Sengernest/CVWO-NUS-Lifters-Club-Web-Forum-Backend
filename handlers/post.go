@@ -17,17 +17,25 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
 	var post Post
-	json.NewDecoder(r.Body).Decode(&post)
+	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-	_, err := db.DB.Exec(
+	res, err := db.DB.Exec(
 		"INSERT INTO posts (title, content, topic_id, user_id) VALUES (?, ?, ?, ?)",
 		post.Title, post.Content, post.TopicID, userID,
 	)
-
 	if err != nil {
 		http.Error(w, "Failed to create post", http.StatusInternalServerError)
 		return
 	}
 
+	postID, _ := res.LastInsertId() // Get the auto-generated post ID
+
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]int{
+		"post_id": int(postID),
+	})
 }
+
