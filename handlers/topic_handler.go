@@ -50,6 +50,23 @@ func GetAllTopics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(topics)
 }
 
+func GetTopic(w http.ResponseWriter, r *http.Request) {
+	topicID, err := extractIDFromPath(r)
+	if err != nil {
+		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
+		return
+	}
+
+	topic, err := repository.GetTopicByID(topicID)
+	if err != nil {
+		http.Error(w, "Topic not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(topic)
+}
+
 // UpdateTopic updates a topic title
 func UpdateTopic(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)

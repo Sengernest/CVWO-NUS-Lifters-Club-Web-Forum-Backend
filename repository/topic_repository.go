@@ -65,6 +65,21 @@ func GetTopicOwner(topicID int) (int, error) {
 	return ownerID, nil
 }
 
+func GetTopicByID(topicID int) (models.Topic, error) {
+	var t models.Topic
+	err := db.DB.QueryRow(
+		"SELECT id, title, user_id FROM topics WHERE id = ?",
+		topicID,
+	).Scan(&t.ID, &t.Title, &t.UserID)
+
+	if err != nil {
+		return t, errors.New("topic not found")
+	}
+
+	return t, nil
+}
+
+
 // UpdateTopic updates the title of a topic
 func UpdateTopic(topicID int, title string) error {
 	_, err := db.DB.Exec(

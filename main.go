@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -42,9 +43,6 @@ func main() {
 	// ================= TOPICS + POSTS UNDER TOPIC =================
 	mux.HandleFunc("/topics/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		// Expected:
-		// /topics/{id}
-		// /topics/{id}/posts
 
 		if len(parts) < 2 {
 			http.Error(w, "Invalid topics route", http.StatusBadRequest)
@@ -74,7 +72,13 @@ func main() {
 			return
 		}
 
-		// ===== /topics/{id} =====
+		  // /topics/{id} 
+		if len(parts) == 2 && r.Method == http.MethodGet {
+			handlers.GetTopic(w, r) 
+			return
+		}
+
+			// ===== /topics/{id} =====
 		q := r.URL.Query()
 		q.Set("id", strconv.Itoa(topicID))
 		r.URL.RawQuery = q.Encode()
@@ -102,79 +106,94 @@ func main() {
 	})))
 
 	// ================= POSTS ITEM + COMMENTS =================
-	mux.HandleFunc("/posts/", middleware.Cors(middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-    path := strings.Trim(r.URL.Path, "/") // remove leading/trailing slashes
-    parts := strings.Split(path, "/")     // split by "/"
-
-    fmt.Println("Incoming request:", r.Method, r.URL.Path, parts) // debug
+	mux.HandleFunc("/posts/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
+    path := strings.Trim(r.URL.Path, "/")
+    parts := strings.Split(path, "/")
 
     if len(parts) < 2 || parts[0] != "posts" {
         http.Error(w, "Invalid posts route", http.StatusBadRequest)
         return
     }
 
-    // parse post ID
     postID, err := strconv.Atoi(parts[1])
     if err != nil {
         http.Error(w, "Invalid post ID", http.StatusBadRequest)
         return
     }
-    r.URL.Query().Set("id", strconv.Itoa(postID)) // pass ID to handlers
+   q := r.URL.Query()
+q.Set("id", strconv.Itoa(postID))
+r.URL.RawQuery = q.Encode() // this actually updates the query for handlers
 
-    // /posts/{id}/like
+
+    // /posts/{id}/like (needs auth)
     if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
-        handlers.LikePost(w, r)
+        middleware.AuthMiddleware(handlers.LikePost)(w, r)
         return
     }
 
-    // /posts/{id}/comments
-    if len(parts) == 3 && parts[2] == "comments" {
-        switch r.Method {
-        case http.MethodGet:
-            handlers.GetCommentsByPost(w, r)
-        case http.MethodPost:
-            handlers.CreateComment(w, r)
-        default:
-            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        }
-        return
-    }
+// /posts/{id}/comments
+if len(parts) == 3 && parts[2] == "comments" {
+    postID := postID // already parsed above
 
-    // /posts/{id} -> PUT, DELETE
+    // Inject postID into query for GetCommentsByPost
+    q := r.URL.Query()
+    q.Set("post_id", strconv.Itoa(postID))
+    r.URL.RawQuery = q.Encode()
+
     switch r.Method {
-    case http.MethodPut:
-        handlers.UpdatePost(w, r)
-    case http.MethodDelete:
-        handlers.DeletePost(w, r)
+    case http.MethodGet:
+        handlers.GetCommentsByPost(w, r) // PUBLIC
+    case http.MethodPost:
+        // inject postID into context for CreateComment
+        ctx := r.Context()
+        ctx = context.WithValue(ctx, "postID", postID)
+        r = r.WithContext(ctx)
+
+        middleware.AuthMiddleware(handlers.CreateComment)(w, r)
     default:
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
     }
-})))
+    return
+}
 
 
-	// ================= COMMENTS ITEM =================
-	mux.HandleFunc("/comments/", middleware.Cors(middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		id, err := extractIDFromPath(r)
-		if err != nil {
-			http.Error(w, "Invalid comment ID", http.StatusBadRequest)
-			return
-		}
-		r.URL.Query().Set("id", strconv.Itoa(id))
 
-		if strings.HasSuffix(r.URL.Path, "/like") && r.Method == http.MethodPost {
-			handlers.LikeComment(w, r)
-			return
-		}
+    // /posts/{id} (edit/delete requires auth)
+    switch r.Method {
+    case http.MethodPut:
+        middleware.AuthMiddleware(handlers.UpdatePost)(w, r)
+    case http.MethodDelete:
+        middleware.AuthMiddleware(handlers.DeletePost)(w, r)
+    default:
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+    }
+}))
 
-		switch r.Method {
-		case http.MethodPut:
-			handlers.UpdateComment(w, r)
-		case http.MethodDelete:
-			handlers.DeleteComment(w, r)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})))
+// ================= COMMENTS ITEM =================
+mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
+    // Extract comment ID from path
+    commentID, err := extractIDFromPath(r)
+    if err != nil {
+        http.Error(w, "Invalid comment ID", http.StatusBadRequest)
+        return
+    }
+
+    // Inject into query for handlers
+    q := r.URL.Query()
+    q.Set("id", strconv.Itoa(commentID))
+    r.URL.RawQuery = q.Encode()
+
+    // CRUD for comments (auth required for update/delete)
+    switch r.Method {
+    case http.MethodPut:
+        middleware.AuthMiddleware(handlers.UpdateComment)(w, r)
+    case http.MethodDelete:
+        middleware.AuthMiddleware(handlers.DeleteComment)(w, r)
+    default:
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+    }
+}))
+
 
 	// ================= ROOT =================
 	mux.HandleFunc("/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
