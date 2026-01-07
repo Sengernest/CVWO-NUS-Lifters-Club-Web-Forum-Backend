@@ -110,3 +110,18 @@ func DeleteComment(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusNoContent)
 }
+
+func ToggleLikeComment(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(int)
+	commentID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+
+	liked, err := repository.ToggleCommentLike(commentID, userID)
+	if err != nil {
+		http.Error(w, "Failed to toggle comment like", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]bool{
+		"liked": liked,
+	})
+}

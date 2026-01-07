@@ -163,15 +163,19 @@ func DeletePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func LikePost(w http.ResponseWriter, r *http.Request) {
+func ToggleLikePost(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(int)
 	postID, _ := strconv.Atoi(r.URL.Query().Get("id"))
 
-	err := repository.LikePost(postID)
+	liked, err := repository.TogglePostLike(postID, userID)
 	if err != nil {
-		http.Error(w, "Failed to like post", http.StatusInternalServerError)
+		http.Error(w, "Failed to toggle like", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{
+		"liked": liked,
+	})
 }
+
 

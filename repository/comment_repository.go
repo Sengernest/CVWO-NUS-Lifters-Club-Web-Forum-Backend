@@ -74,17 +74,61 @@ func DeleteComment(commentID int) error {
 	return err
 }
 
-func LikeComment(commentID int) error {
-	_, err := db.DB.Exec(
-		"UPDATE comments SET likes = likes + 1 WHERE id = ?",
+func ToggleCommentLike(commentID, userID int) (bool, error) {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return false, err
+	}
+
+	// check if already liked
+	var exists int
+	err = tx.QueryRow(
+		`SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?`,
+		commentID, userID,
+	).Scan(&exists)
+
+	if err == nil {
+	
+		_, err = tx.Exec(
+			`DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?`,
+			commentID, userID,
+		)
+		if err != nil {
+			tx.Rollback()
+			return false, err
+		}
+
+		_, err = tx.Exec(
+			`UPDATE comments SET likes = likes - 1 WHERE id = ? AND likes > 0`,
+			commentID,
+		)
+		if err != nil {
+			tx.Rollback()
+			return false, err
+		}
+
+		tx.Commit()
+		return false, nil 
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)`,
+		commentID, userID,
+	)
+	if err != nil {
+		tx.Rollback()
+		return false, err
+	}
+
+	_, err = tx.Exec(
+		`UPDATE comments SET likes = likes + 1 WHERE id = ?`,
 		commentID,
 	)
-	return err
+	if err != nil {
+		tx.Rollback()
+		return false, err
+	}
+
+	tx.Commit()
+	return true, nil 
 }
-func UnlikeComment(commentID int) error {
-	_, err := db.DB.Exec(
-		"UPDATE comments SET likes = likes - 1 WHERE id = ? AND likes > 0",
-		commentID,
-	)
-	return err
-}				

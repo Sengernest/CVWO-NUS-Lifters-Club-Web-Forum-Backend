@@ -119,17 +119,60 @@ func DeletePost(postID int) error {
 	return err
 }
 
-func LikePost(postID int) error {
-	_, err := db.DB.Exec(
-		"UPDATE posts SET likes = likes + 1 WHERE id = ?",
+func TogglePostLike(postID, userID int) (bool, error) {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return false, err
+	}
+
+	var exists int
+	err = tx.QueryRow(
+		`SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?`,
+		postID, userID,
+	).Scan(&exists)
+
+	if err == nil {
+	
+		_, err = tx.Exec(
+			`DELETE FROM post_likes WHERE post_id = ? AND user_id = ?`,
+			postID, userID,
+		)
+		if err != nil {
+			tx.Rollback()
+			return false, err
+		}
+
+		_, err = tx.Exec(
+			`UPDATE posts SET likes = likes - 1 WHERE id = ? AND likes > 0`,
+			postID,
+		)
+		if err != nil {
+			tx.Rollback()
+			return false, err
+		}
+
+		tx.Commit()
+		return false, nil 
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)`,
+		postID, userID,
+	)
+	if err != nil {
+		tx.Rollback()
+		return false, err
+	}
+
+	_, err = tx.Exec(
+		`UPDATE posts SET likes = likes + 1 WHERE id = ?`,
 		postID,
 	)
-	return err
-}
-func UnlikePost(postID int) error {
-	_, err := db.DB.Exec(
-		"UPDATE posts SET likes = likes - 1 WHERE id = ? AND likes > 0",
-		postID,
-	)
-	return err
+	if err != nil {
+		tx.Rollback()
+		return false, err
+	}
+
+	tx.Commit()
+	return true, nil 
 }

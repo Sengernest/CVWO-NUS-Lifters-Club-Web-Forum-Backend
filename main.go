@@ -127,7 +127,7 @@ r.URL.RawQuery = q.Encode() // this actually updates the query for handlers
 
     // /posts/{id}/like (needs auth)
     if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
-        middleware.AuthMiddleware(handlers.LikePost)(w, r)
+        middleware.AuthMiddleware(handlers.ToggleLikePost)(w, r)
         return
     }
 
@@ -156,8 +156,6 @@ if len(parts) == 3 && parts[2] == "comments" {
     return
 }
 
-
-
     // /posts/{id} (edit/delete requires auth)
     switch r.Method {
     case http.MethodPut:
@@ -171,19 +169,30 @@ if len(parts) == 3 && parts[2] == "comments" {
 
 // ================= COMMENTS ITEM =================
 mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
-    // Extract comment ID from path
-    commentID, err := extractIDFromPath(r)
+    parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+    if len(parts) < 2 || parts[0] != "comments" {
+        http.Error(w, "Invalid comment route", http.StatusBadRequest)
+        return
+    }
+
+    commentID, err := strconv.Atoi(parts[1])
     if err != nil {
         http.Error(w, "Invalid comment ID", http.StatusBadRequest)
         return
     }
 
-    // Inject into query for handlers
+    // Inject comment ID into query for handlers
     q := r.URL.Query()
     q.Set("id", strconv.Itoa(commentID))
     r.URL.RawQuery = q.Encode()
 
-    // CRUD for comments (auth required for update/delete)
+    // Handle /comments/{id}/like
+    if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
+        middleware.AuthMiddleware(handlers.ToggleLikeComment)(w, r)
+        return
+    }
+
+    // CRUD for comments
     switch r.Method {
     case http.MethodPut:
         middleware.AuthMiddleware(handlers.UpdateComment)(w, r)

@@ -50,6 +50,15 @@ func createTables() {
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);`
 
+	postLikesTable := `
+	CREATE TABLE IF NOT EXISTS post_likes (
+		post_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		PRIMARY KEY (post_id, user_id),
+		FOREIGN KEY (post_id) REFERENCES posts(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);`
+
 	commentTable := `
 	CREATE TABLE IF NOT EXISTS comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,10 +71,22 @@ func createTables() {
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);`
 
+	commentLikesTable := `
+	CREATE TABLE IF NOT EXISTS comment_likes (
+		comment_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		PRIMARY KEY (comment_id, user_id),
+		FOREIGN KEY (comment_id) REFERENCES comments(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);`
+
+
 	execTable(userTable)
 	execTable(topicTable)
 	execTable(postTable)
+	execTable(postLikesTable)
 	execTable(commentTable)
+	execTable(commentLikesTable)
 }
 
 func execTable(query string) {
