@@ -18,10 +18,9 @@ type UpdateCommentRequest struct {
     Content string `json:"content"`
 }
 
-// CreateComment handles POST /posts/{postID}/comments
 func CreateComment(w http.ResponseWriter, r *http.Request) {
     userID := r.Context().Value(middleware.UserIDKey).(int)
-    postID := r.Context().Value("postID").(int) // injected from main.go
+    postID := r.Context().Value("postID").(int) 
 
     var req CreateCommentRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -41,7 +40,6 @@ func CreateComment(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// GetCommentsByPost handles GET /posts/{postID}/comments
 func GetCommentsByPost(w http.ResponseWriter, r *http.Request) {
     postID, err := strconv.Atoi(r.URL.Query().Get("post_id"))
     if err != nil {
@@ -59,7 +57,6 @@ func GetCommentsByPost(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(comments)
 }
 
-// UpdateComment handles PUT /comments/{id}
 func UpdateComment(w http.ResponseWriter, r *http.Request) {
     userID := r.Context().Value(middleware.UserIDKey).(int)
     commentID, _ := strconv.Atoi(r.URL.Query().Get("id"))
@@ -88,7 +85,6 @@ func UpdateComment(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
-// DeleteComment handles DELETE /comments/{id}
 func DeleteComment(w http.ResponseWriter, r *http.Request) {
     userID := r.Context().Value(middleware.UserIDKey).(int)
     commentID, _ := strconv.Atoi(r.URL.Query().Get("id"))

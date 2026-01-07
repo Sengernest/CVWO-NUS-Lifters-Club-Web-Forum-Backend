@@ -17,7 +17,6 @@ type UpdateTopicRequest struct {
 	Title string `json:"title"`
 }
 
-// CreateTopic creates a new topic
 func CreateTopic(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
@@ -38,7 +37,6 @@ func CreateTopic(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(topic)
 }
 
-// GetAllTopics returns all topics
 func GetAllTopics(w http.ResponseWriter, r *http.Request) {
 	topics, err := repository.GetAllTopics()
 	if err != nil {
@@ -67,7 +65,6 @@ func GetTopic(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(topic)
 }
 
-// UpdateTopic updates a topic title
 func UpdateTopic(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
@@ -99,7 +96,6 @@ func UpdateTopic(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// DeleteTopic deletes a topic
 func DeleteTopic(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 	topicID, _ := strconv.Atoi(r.URL.Query().Get("id"))

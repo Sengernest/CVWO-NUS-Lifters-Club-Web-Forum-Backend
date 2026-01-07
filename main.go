@@ -12,7 +12,6 @@ import (
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 )
 
-// extractIDFromPath parses the last segment as ID
 func extractIDFromPath(r *http.Request) (int, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	return strconv.Atoi(parts[len(parts)-1])
@@ -24,11 +23,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// ================= AUTH =================
 	mux.HandleFunc("/register", middleware.Cors(handlers.Register))
 	mux.HandleFunc("/login", middleware.Cors(handlers.Login))
 
-	// ================= TOPICS COLLECTION =================
 	mux.HandleFunc("/topics", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -40,7 +37,6 @@ func main() {
 		}
 	}))
 
-	// ================= TOPICS + POSTS UNDER TOPIC =================
 	mux.HandleFunc("/topics/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 
@@ -55,7 +51,6 @@ func main() {
 			return
 		}
 
-		// ===== /topics/{id}/posts =====
 		if len(parts) == 3 && parts[2] == "posts" {
 			q := r.URL.Query()
 			q.Set("topic_id", strconv.Itoa(topicID))
@@ -72,13 +67,11 @@ func main() {
 			return
 		}
 
-		  // /topics/{id} 
 		if len(parts) == 2 && r.Method == http.MethodGet {
 			handlers.GetTopic(w, r) 
 			return
 		}
 
-			// ===== /topics/{id} =====
 		q := r.URL.Query()
 		q.Set("id", strconv.Itoa(topicID))
 		r.URL.RawQuery = q.Encode()
@@ -93,7 +86,6 @@ func main() {
 		}
 	}))
 
-	// ================= POSTS COLLECTION =================
 	mux.HandleFunc("/posts", middleware.Cors(middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -105,7 +97,6 @@ func main() {
 		}
 	})))
 
-	// ================= POSTS ITEM + COMMENTS =================
 	mux.HandleFunc("/posts/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
     path := strings.Trim(r.URL.Path, "/")
     parts := strings.Split(path, "/")
@@ -120,31 +111,27 @@ func main() {
         http.Error(w, "Invalid post ID", http.StatusBadRequest)
         return
     }
-   q := r.URL.Query()
-q.Set("id", strconv.Itoa(postID))
-r.URL.RawQuery = q.Encode() // this actually updates the query for handlers
+	q := r.URL.Query()
+	q.Set("id", strconv.Itoa(postID))
+	r.URL.RawQuery = q.Encode() 
 
-
-    // /posts/{id}/like (needs auth)
     if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
         middleware.AuthMiddleware(handlers.ToggleLikePost)(w, r)
         return
     }
 
-// /posts/{id}/comments
-if len(parts) == 3 && parts[2] == "comments" {
-    postID := postID // already parsed above
 
-    // Inject postID into query for GetCommentsByPost
-    q := r.URL.Query()
-    q.Set("post_id", strconv.Itoa(postID))
-    r.URL.RawQuery = q.Encode()
+	if len(parts) == 3 && parts[2] == "comments" {
+		postID := postID 
+
+		q := r.URL.Query()
+		q.Set("post_id", strconv.Itoa(postID))
+		r.URL.RawQuery = q.Encode()
 
     switch r.Method {
     case http.MethodGet:
-        handlers.GetCommentsByPost(w, r) // PUBLIC
+        handlers.GetCommentsByPost(w, r) 
     case http.MethodPost:
-        // inject postID into context for CreateComment
         ctx := r.Context()
         ctx = context.WithValue(ctx, "postID", postID)
         r = r.WithContext(ctx)
@@ -154,9 +141,8 @@ if len(parts) == 3 && parts[2] == "comments" {
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
     }
     return
-}
+ 	}	
 
-    // /posts/{id} (edit/delete requires auth)
     switch r.Method {
     case http.MethodPut:
         middleware.AuthMiddleware(handlers.UpdatePost)(w, r)
@@ -167,7 +153,6 @@ if len(parts) == 3 && parts[2] == "comments" {
     }
 }))
 
-// ================= COMMENTS ITEM =================
 mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
     parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
     if len(parts) < 2 || parts[0] != "comments" {
@@ -181,18 +166,15 @@ mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http
         return
     }
 
-    // Inject comment ID into query for handlers
     q := r.URL.Query()
     q.Set("id", strconv.Itoa(commentID))
     r.URL.RawQuery = q.Encode()
 
-    // Handle /comments/{id}/like
     if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
         middleware.AuthMiddleware(handlers.ToggleLikeComment)(w, r)
         return
     }
 
-    // CRUD for comments
     switch r.Method {
     case http.MethodPut:
         middleware.AuthMiddleware(handlers.UpdateComment)(w, r)
@@ -204,7 +186,6 @@ mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http
 }))
 
 
-	// ================= ROOT =================
 	mux.HandleFunc("/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "NUS Lifters Club backend running with SQLite")
 	}))

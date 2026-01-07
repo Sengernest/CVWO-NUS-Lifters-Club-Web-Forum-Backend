@@ -38,7 +38,11 @@ func GetCommentOwner(commentID int) (int, error) {
 
 func GetCommentsByPost(postID int) ([]models.Comment, error) {
 	rows, err := db.DB.Query(
-		"SELECT id, content, post_id, user_id, likes, created_at FROM comments WHERE post_id = ? ORDER BY id ASC",
+		`SELECT c.id, c.content, c.post_id, c.user_id, u.username, c.likes, c.created_at
+		 FROM comments c
+		 JOIN users u ON c.user_id = u.id
+		 WHERE c.post_id = ?
+		 ORDER BY c.created_at ASC`,
 		postID,
 	)
 	if err != nil {
@@ -49,13 +53,23 @@ func GetCommentsByPost(postID int) ([]models.Comment, error) {
 	var comments []models.Comment
 	for rows.Next() {
 		var c models.Comment
-		if err := rows.Scan(&c.ID, &c.Content, &c.PostID, &c.UserID, &c.Likes, &c.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&c.ID,
+			&c.Content,
+			&c.PostID,
+			&c.UserID,
+			&c.Username,  
+			&c.Likes,
+			&c.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		comments = append(comments, c)
 	}
+
 	return comments, nil
 }
+
 
 
 func UpdateComment(commentID int, content string) error {
@@ -80,7 +94,6 @@ func ToggleCommentLike(commentID, userID int) (bool, error) {
 		return false, err
 	}
 
-	// check if already liked
 	var exists int
 	err = tx.QueryRow(
 		`SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?`,

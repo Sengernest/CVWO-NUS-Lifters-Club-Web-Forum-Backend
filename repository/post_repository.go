@@ -26,9 +26,10 @@ func CreatePost(title, content string, topicID, userID int) (int, error) {
 
 func GetAllPosts() ([]models.Post, error) {
 	rows, err := db.DB.Query(
-		`SELECT id, title, content, topic_id, user_id, likes, created_at
-		 FROM posts
-		 ORDER BY id DESC`,
+		`SELECT p.id, p.title, p.content, p.topic_id, p.user_id, u.username, p.likes, p.created_at
+		 FROM posts p
+		 JOIN users u ON p.user_id = u.id
+		 ORDER BY p.id DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -44,6 +45,7 @@ func GetAllPosts() ([]models.Post, error) {
 			&p.Content,
 			&p.TopicID,
 			&p.UserID,
+			&p.Username, 
 			&p.Likes,
 			&p.CreatedAt,
 		); err != nil {
@@ -55,12 +57,14 @@ func GetAllPosts() ([]models.Post, error) {
 	return posts, nil
 }
 
+
 func GetPostsByTopic(topicID int) ([]models.Post, error) {
 	rows, err := db.DB.Query(
-		`SELECT id, title, content, topic_id, user_id, likes, created_at
-		 FROM posts
-		 WHERE topic_id = ?
-		 ORDER BY created_at DESC`,
+		`SELECT p.id, p.title, p.content, p.topic_id, p.user_id, u.username, p.likes, p.created_at
+		 FROM posts p
+		 JOIN users u ON p.user_id = u.id
+		 WHERE p.topic_id = ?
+		 ORDER BY p.created_at DESC`,
 		topicID,
 	)
 	if err != nil {
@@ -77,6 +81,7 @@ func GetPostsByTopic(topicID int) ([]models.Post, error) {
 			&p.Content,
 			&p.TopicID,
 			&p.UserID,
+			&p.Username,
 			&p.Likes,
 			&p.CreatedAt,
 		); err != nil {
@@ -87,6 +92,7 @@ func GetPostsByTopic(topicID int) ([]models.Post, error) {
 
 	return posts, nil
 }
+
 
 
 func GetPostOwner(postID int) (int, error) {

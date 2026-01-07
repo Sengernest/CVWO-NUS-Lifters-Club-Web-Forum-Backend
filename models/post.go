@@ -8,6 +8,7 @@ type Post struct {
 	Content   string    `json:"content"`
 	TopicID   int       `json:"topic_id"`
 	UserID    int       `json:"user_id"`
+	Username  string    `json:"username"`
 	Likes     int       `json:"likes"`
 	CreatedAt time.Time `json:"created_at"`
 }

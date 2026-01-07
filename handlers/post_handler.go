@@ -22,8 +22,6 @@ type UpdatePostRequest struct {
 	Content string `json:"content"`
 }
 
-
-// extractIDFromPath parses the last segment of the URL path as an integer ID
 func extractIDFromPath(r *http.Request) (int, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) == 0 {
@@ -87,7 +85,6 @@ func GetPostsByTopic(w http.ResponseWriter, r *http.Request) {
 }
 
 
-// UpdatePost handles PUT /posts/{id}
 func UpdatePost(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
@@ -128,11 +125,10 @@ func UpdatePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// DeletePost handles DELETE /posts/{id}
 func DeletePost(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
-	// Extract post ID from path
+	
 	postID, err := extractIDFromPath(r)
 	if err != nil {
 		http.Error(w, "Invalid post ID", http.StatusBadRequest)
