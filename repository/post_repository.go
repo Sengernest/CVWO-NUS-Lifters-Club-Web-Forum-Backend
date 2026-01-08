@@ -16,12 +16,11 @@ func CreatePost(title, content string, topicID, userID int) (int, error) {
 		return 0, err
 	}
 
-	postID, err := res.LastInsertId()
+	id64, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
 	}
-
-	return int(postID), nil
+	return int(id64), nil
 }
 
 func GetAllPosts() ([]models.Post, error) {
@@ -40,23 +39,15 @@ func GetAllPosts() ([]models.Post, error) {
 	for rows.Next() {
 		var p models.Post
 		if err := rows.Scan(
-			&p.ID,
-			&p.Title,
-			&p.Content,
-			&p.TopicID,
-			&p.UserID,
-			&p.Username, 
-			&p.Likes,
-			&p.CreatedAt,
+			&p.ID, &p.Title, &p.Content, &p.TopicID,
+			&p.UserID, &p.Username, &p.Likes, &p.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
 	}
-
 	return posts, nil
 }
-
 
 func GetPostsByTopic(topicID int) ([]models.Post, error) {
 	rows, err := db.DB.Query(
@@ -76,52 +67,32 @@ func GetPostsByTopic(topicID int) ([]models.Post, error) {
 	for rows.Next() {
 		var p models.Post
 		if err := rows.Scan(
-			&p.ID,
-			&p.Title,
-			&p.Content,
-			&p.TopicID,
-			&p.UserID,
-			&p.Username,
-			&p.Likes,
-			&p.CreatedAt,
+			&p.ID, &p.Title, &p.Content, &p.TopicID,
+			&p.UserID, &p.Username, &p.Likes, &p.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
 	}
-
 	return posts, nil
 }
 
-
-
 func GetPostOwner(postID int) (int, error) {
 	var ownerID int
-	err := db.DB.QueryRow(
-		"SELECT user_id FROM posts WHERE id = ?",
-		postID,
-	).Scan(&ownerID)
-
+	err := db.DB.QueryRow("SELECT user_id FROM posts WHERE id = ?", postID).Scan(&ownerID)
 	if err != nil {
 		return 0, errors.New("post not found")
 	}
-
 	return ownerID, nil
 }
 
 func UpdatePost(postID int, title, content string) error {
-	_, err := db.DB.Exec(
-		"UPDATE posts SET title = ?, content = ? WHERE id = ?",
-		title, content, postID,
-	)
+	_, err := db.DB.Exec("UPDATE posts SET title = ?, content = ? WHERE id = ?", title, content, postID)
 	return err
 }
 
 func DeletePost(postID int) error {
-	_, err := db.DB.Exec(
-		"DELETE FROM posts WHERE id = ?",
-		postID,
-	)
+	_, err := db.DB.Exec("DELETE FROM posts WHERE id = ?", postID)
 	return err
 }
 
@@ -132,53 +103,32 @@ func TogglePostLike(postID, userID int) (bool, error) {
 	}
 
 	var exists int
-	err = tx.QueryRow(
-		`SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?`,
-		postID, userID,
-	).Scan(&exists)
+	err = tx.QueryRow("SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?", postID, userID).Scan(&exists)
 
 	if err == nil {
-	
-		_, err = tx.Exec(
-			`DELETE FROM post_likes WHERE post_id = ? AND user_id = ?`,
-			postID, userID,
-		)
-		if err != nil {
+		// Already liked: remove
+		if _, err := tx.Exec("DELETE FROM post_likes WHERE post_id = ? AND user_id = ?", postID, userID); err != nil {
 			tx.Rollback()
 			return false, err
 		}
-
-		_, err = tx.Exec(
-			`UPDATE posts SET likes = likes - 1 WHERE id = ? AND likes > 0`,
-			postID,
-		)
-		if err != nil {
+		if _, err := tx.Exec("UPDATE posts SET likes = likes - 1 WHERE id = ? AND likes > 0", postID); err != nil {
 			tx.Rollback()
 			return false, err
 		}
-
 		tx.Commit()
-		return false, nil 
+		return false, nil
 	}
 
-	_, err = tx.Exec(
-		`INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)`,
-		postID, userID,
-	)
-	if err != nil {
+	// Not liked: insert
+	if _, err := tx.Exec("INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)", postID, userID); err != nil {
 		tx.Rollback()
 		return false, err
 	}
-
-	_, err = tx.Exec(
-		`UPDATE posts SET likes = likes + 1 WHERE id = ?`,
-		postID,
-	)
-	if err != nil {
+	if _, err := tx.Exec("UPDATE posts SET likes = likes + 1 WHERE id = ?", postID); err != nil {
 		tx.Rollback()
 		return false, err
 	}
 
 	tx.Commit()
-	return true, nil 
+	return true, nil
 }

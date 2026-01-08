@@ -11,10 +11,15 @@ var DB *sql.DB
 
 func ConnectDatabase() {
 	var err error
-
 	DB, err = sql.Open("sqlite", "forum.db")
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
+	}
+
+	// Enforce foreign key constraints in SQLite
+	_, err = DB.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
+		log.Fatal("Failed to enable foreign keys:", err)
 	}
 
 	createTables()
@@ -31,10 +36,10 @@ func createTables() {
 
 	topicTable := `
 	CREATE TABLE IF NOT EXISTS topics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		title TEXT NOT NULL,
+		user_id INTEGER NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id)
 	);`
 
 	postTable := `
@@ -79,7 +84,6 @@ func createTables() {
 		FOREIGN KEY (comment_id) REFERENCES comments(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);`
-
 
 	execTable(userTable)
 	execTable(topicTable)

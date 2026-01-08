@@ -12,20 +12,17 @@ import (
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 )
 
-func extractIDFromPath(r *http.Request) (int, error) {
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	return strconv.Atoi(parts[len(parts)-1])
-}
-
 func main() {
 	// Connect DB
 	db.ConnectDatabase()
 
 	mux := http.NewServeMux()
 
+	// --- Public Auth Routes ---
 	mux.HandleFunc("/register", middleware.Cors(handlers.Register))
 	mux.HandleFunc("/login", middleware.Cors(handlers.Login))
 
+	// --- Topics ---
 	mux.HandleFunc("/topics", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -39,7 +36,6 @@ func main() {
 
 	mux.HandleFunc("/topics/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-
 		if len(parts) < 2 {
 			http.Error(w, "Invalid topics route", http.StatusBadRequest)
 			return
@@ -51,141 +47,143 @@ func main() {
 			return
 		}
 
+		// /topics/:id/posts
 		if len(parts) == 3 && parts[2] == "posts" {
-			q := r.URL.Query()
-			q.Set("topic_id", strconv.Itoa(topicID))
-			r.URL.RawQuery = q.Encode()
-
 			switch r.Method {
 			case http.MethodGet:
-				handlers.GetPostsByTopic(w, r)
+				handlers.GetPostsByTopic(w, r, topicID)
 			case http.MethodPost:
-				middleware.AuthMiddleware(handlers.CreatePost)(w, r)
+				middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+					ctx := context.WithValue(r.Context(), "topicID", topicID)
+					r = r.WithContext(ctx)
+					handlers.CreatePost(w, r)
+				})(w, r)
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
 			return
 		}
 
-		if len(parts) == 2 && r.Method == http.MethodGet {
-			handlers.GetTopic(w, r) 
-			return
-		}
-
-		q := r.URL.Query()
-		q.Set("id", strconv.Itoa(topicID))
-		r.URL.RawQuery = q.Encode()
-
+		// /topics/:id
 		switch r.Method {
+		case http.MethodGet:
+			handlers.GetTopic(w, r, topicID)
 		case http.MethodPut:
-			middleware.AuthMiddleware(handlers.UpdateTopic)(w, r)
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.UpdateTopic(w, r, topicID)
+			})(w, r)
 		case http.MethodDelete:
-			middleware.AuthMiddleware(handlers.DeleteTopic)(w, r)
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.DeleteTopic(w, r, topicID)
+			})(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}))
 
-	mux.HandleFunc("/posts", middleware.Cors(middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	// --- Posts ---
+	mux.HandleFunc("/posts", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			handlers.GetAllPosts(w, r)
 		case http.MethodPost:
-			handlers.CreatePost(w, r)
+			middleware.AuthMiddleware(handlers.CreatePost)(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})))
+	}))
 
 	mux.HandleFunc("/posts/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
-    path := strings.Trim(r.URL.Path, "/")
-    parts := strings.Split(path, "/")
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) < 2 {
+			http.Error(w, "Invalid posts route", http.StatusBadRequest)
+			return
+		}
 
-    if len(parts) < 2 || parts[0] != "posts" {
-        http.Error(w, "Invalid posts route", http.StatusBadRequest)
-        return
-    }
+		postID, err := strconv.Atoi(parts[1])
+		if err != nil {
+			http.Error(w, "Invalid post ID", http.StatusBadRequest)
+			return
+		}
 
-    postID, err := strconv.Atoi(parts[1])
-    if err != nil {
-        http.Error(w, "Invalid post ID", http.StatusBadRequest)
-        return
-    }
-	q := r.URL.Query()
-	q.Set("id", strconv.Itoa(postID))
-	r.URL.RawQuery = q.Encode() 
+		// /posts/:id/like
+		if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.ToggleLikePost(w, r, postID)
+			})(w, r)
+			return
+		}
 
-    if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
-        middleware.AuthMiddleware(handlers.ToggleLikePost)(w, r)
-        return
-    }
+		// /posts/:id/comments
+		if len(parts) == 3 && parts[2] == "comments" {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetCommentsByPost(w, r, postID)
+			case http.MethodPost:
+				middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+					ctx := context.WithValue(r.Context(), "postID", postID)
+					r = r.WithContext(ctx)
+					handlers.CreateComment(w, r)
+				})(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+			return
+		}
 
+		// /posts/:id
+		switch r.Method {
+		case http.MethodPut:
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.UpdatePost(w, r, postID)
+			})(w, r)
+		case http.MethodDelete:
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.DeletePost(w, r, postID)
+			})(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 
-	if len(parts) == 3 && parts[2] == "comments" {
-		postID := postID 
+	// --- Comments ---
+	mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) < 2 {
+			http.Error(w, "Invalid comment route", http.StatusBadRequest)
+			return
+		}
 
-		q := r.URL.Query()
-		q.Set("post_id", strconv.Itoa(postID))
-		r.URL.RawQuery = q.Encode()
+		commentID, err := strconv.Atoi(parts[1])
+		if err != nil {
+			http.Error(w, "Invalid comment ID", http.StatusBadRequest)
+			return
+		}
 
-    switch r.Method {
-    case http.MethodGet:
-        handlers.GetCommentsByPost(w, r) 
-    case http.MethodPost:
-        ctx := r.Context()
-        ctx = context.WithValue(ctx, "postID", postID)
-        r = r.WithContext(ctx)
+		// /comments/:id/like
+		if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.ToggleLikeComment(w, r, commentID)
+			})(w, r)
+			return
+		}
 
-        middleware.AuthMiddleware(handlers.CreateComment)(w, r)
-    default:
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-    }
-    return
- 	}	
+		// /comments/:id
+		switch r.Method {
+		case http.MethodPut:
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.UpdateComment(w, r, commentID)
+			})(w, r)
+		case http.MethodDelete:
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+				handlers.DeleteComment(w, r, commentID)
+			})(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
 
-    switch r.Method {
-    case http.MethodPut:
-        middleware.AuthMiddleware(handlers.UpdatePost)(w, r)
-    case http.MethodDelete:
-        middleware.AuthMiddleware(handlers.DeletePost)(w, r)
-    default:
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-    }
-}))
-
-mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
-    parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-    if len(parts) < 2 || parts[0] != "comments" {
-        http.Error(w, "Invalid comment route", http.StatusBadRequest)
-        return
-    }
-
-    commentID, err := strconv.Atoi(parts[1])
-    if err != nil {
-        http.Error(w, "Invalid comment ID", http.StatusBadRequest)
-        return
-    }
-
-    q := r.URL.Query()
-    q.Set("id", strconv.Itoa(commentID))
-    r.URL.RawQuery = q.Encode()
-
-    if len(parts) == 3 && parts[2] == "like" && r.Method == http.MethodPost {
-        middleware.AuthMiddleware(handlers.ToggleLikeComment)(w, r)
-        return
-    }
-
-    switch r.Method {
-    case http.MethodPut:
-        middleware.AuthMiddleware(handlers.UpdateComment)(w, r)
-    case http.MethodDelete:
-        middleware.AuthMiddleware(handlers.DeleteComment)(w, r)
-    default:
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-    }
-}))
-
-
+	// --- Default ---
 	mux.HandleFunc("/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "NUS Lifters Club backend running with SQLite")
 	}))

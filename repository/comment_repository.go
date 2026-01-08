@@ -8,28 +8,21 @@ import (
 )
 
 func CreateComment(content string, postID, userID int) (int, error) {
-	res, err := db.DB.Exec(
-		"INSERT INTO comments (content, post_id, user_id) VALUES (?, ?, ?)",
-		content, postID, userID,
-	)
+	res, err := db.DB.Exec("INSERT INTO comments (content, post_id, user_id) VALUES (?, ?, ?)", content, postID, userID)
 	if err != nil {
 		return 0, err
 	}
 
-	commentID, err := res.LastInsertId()
+	id64, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
 	}
-
-	return int(commentID), nil
+	return int(id64), nil
 }
 
 func GetCommentOwner(commentID int) (int, error) {
 	var ownerID int
-	err := db.DB.QueryRow(
-		"SELECT user_id FROM comments WHERE id = ?",
-		commentID,
-	).Scan(&ownerID)
+	err := db.DB.QueryRow("SELECT user_id FROM comments WHERE id = ?", commentID).Scan(&ownerID)
 	if err != nil {
 		return 0, errors.New("comment not found")
 	}
@@ -53,38 +46,21 @@ func GetCommentsByPost(postID int) ([]models.Comment, error) {
 	var comments []models.Comment
 	for rows.Next() {
 		var c models.Comment
-		if err := rows.Scan(
-			&c.ID,
-			&c.Content,
-			&c.PostID,
-			&c.UserID,
-			&c.Username,  
-			&c.Likes,
-			&c.CreatedAt,
-		); err != nil {
+		if err := rows.Scan(&c.ID, &c.Content, &c.PostID, &c.UserID, &c.Username, &c.Likes, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		comments = append(comments, c)
 	}
-
 	return comments, nil
 }
 
-
-
 func UpdateComment(commentID int, content string) error {
-	_, err := db.DB.Exec(
-		"UPDATE comments SET content = ? WHERE id = ?",
-		content, commentID,
-	)
+	_, err := db.DB.Exec("UPDATE comments SET content = ? WHERE id = ?", content, commentID)
 	return err
 }
 
 func DeleteComment(commentID int) error {
-	_, err := db.DB.Exec(
-		"DELETE FROM comments WHERE id = ?",
-		commentID,
-	)
+	_, err := db.DB.Exec("DELETE FROM comments WHERE id = ?", commentID)
 	return err
 }
 
@@ -95,53 +71,31 @@ func ToggleCommentLike(commentID, userID int) (bool, error) {
 	}
 
 	var exists int
-	err = tx.QueryRow(
-		`SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?`,
-		commentID, userID,
-	).Scan(&exists)
-
+	err = tx.QueryRow("SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?", commentID, userID).Scan(&exists)
 	if err == nil {
-	
-		_, err = tx.Exec(
-			`DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?`,
-			commentID, userID,
-		)
-		if err != nil {
+		// Already liked: remove
+		if _, err := tx.Exec("DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?", commentID, userID); err != nil {
 			tx.Rollback()
 			return false, err
 		}
-
-		_, err = tx.Exec(
-			`UPDATE comments SET likes = likes - 1 WHERE id = ? AND likes > 0`,
-			commentID,
-		)
-		if err != nil {
+		if _, err := tx.Exec("UPDATE comments SET likes = likes - 1 WHERE id = ? AND likes > 0", commentID); err != nil {
 			tx.Rollback()
 			return false, err
 		}
-
 		tx.Commit()
-		return false, nil 
+		return false, nil
 	}
 
-	_, err = tx.Exec(
-		`INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)`,
-		commentID, userID,
-	)
-	if err != nil {
+	// Not liked: insert
+	if _, err := tx.Exec("INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)", commentID, userID); err != nil {
 		tx.Rollback()
 		return false, err
 	}
-
-	_, err = tx.Exec(
-		`UPDATE comments SET likes = likes + 1 WHERE id = ?`,
-		commentID,
-	)
-	if err != nil {
+	if _, err := tx.Exec("UPDATE comments SET likes = likes + 1 WHERE id = ?", commentID); err != nil {
 		tx.Rollback()
 		return false, err
 	}
 
 	tx.Commit()
-	return true, nil 
+	return true, nil
 }

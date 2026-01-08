@@ -16,23 +16,20 @@ func CreateTopic(title string, userID int) (models.Topic, error) {
 		return models.Topic{}, err
 	}
 
-	id, err := res.LastInsertId()
+	id64, err := res.LastInsertId()
 	if err != nil {
 		return models.Topic{}, err
 	}
 
 	return models.Topic{
-		ID:     int(id),
+		ID:     int(id64),
 		Title:  title,
 		UserID: userID,
 	}, nil
 }
 
-// GetAllTopics fetches all topics
 func GetAllTopics() ([]models.Topic, error) {
-	rows, err := db.DB.Query(
-		"SELECT id, title, user_id FROM topics ORDER BY id ASC",
-	)
+	rows, err := db.DB.Query("SELECT id, title, user_id FROM topics ORDER BY id ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -50,53 +47,39 @@ func GetAllTopics() ([]models.Topic, error) {
 	return topics, nil
 }
 
+func GetTopicByID(topicID int) (models.Topic, error) {
+	var t models.Topic
+	err := db.DB.QueryRow("SELECT id, title, user_id FROM topics WHERE id = ?", topicID).
+		Scan(&t.ID, &t.Title, &t.UserID)
+	if err != nil {
+		return t, errors.New("topic not found")
+	}
+	return t, nil
+}
+
 func GetTopicOwner(topicID int) (int, error) {
 	var ownerID int
-	err := db.DB.QueryRow(
-		"SELECT user_id FROM topics WHERE id = ?",
-		topicID,
-	).Scan(&ownerID)
-
+	err := db.DB.QueryRow("SELECT user_id FROM topics WHERE id = ?", topicID).Scan(&ownerID)
 	if err != nil {
 		return 0, errors.New("topic not found")
 	}
 	return ownerID, nil
 }
 
-func GetTopicByID(topicID int) (models.Topic, error) {
-	var t models.Topic
-	err := db.DB.QueryRow(
-		"SELECT id, title, user_id FROM topics WHERE id = ?",
-		topicID,
-	).Scan(&t.ID, &t.Title, &t.UserID)
-
-	if err != nil {
-		return t, errors.New("topic not found")
-	}
-
-	return t, nil
-}
-
 func UpdateTopic(topicID int, title string) error {
-	_, err := db.DB.Exec(
-		"UPDATE topics SET title = ? WHERE id = ?",
-		title, topicID,
-	)
+	_, err := db.DB.Exec("UPDATE topics SET title = ? WHERE id = ?", title, topicID)
 	return err
 }
 
-func DeleteTopic(id, userID int) error {
-	ownerID, err := GetTopicOwner(id)
+func DeleteTopic(topicID, userID int) error {
+	ownerID, err := GetTopicOwner(topicID)
 	if err != nil {
 		return err
 	}
-
 	if ownerID != userID {
 		return errors.New("forbidden")
 	}
 
-	_, err = db.DB.Exec("DELETE FROM topics WHERE id = ?", id)
+	_, err = db.DB.Exec("DELETE FROM topics WHERE id = ?", topicID)
 	return err
 }
-
-

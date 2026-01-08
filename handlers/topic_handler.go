@@ -3,24 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
-	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/repository"
+	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 )
 
-type CreateTopicRequest struct {
-	Title string `json:"title"`
-}
-
-type UpdateTopicRequest struct {
-	Title string `json:"title"`
-}
-
+// CreateTopic expects AuthMiddleware to set userID in context
 func CreateTopic(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
-	var req CreateTopicRequest
+	var req struct {
+		Title string `json:"title"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -48,13 +42,7 @@ func GetAllTopics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(topics)
 }
 
-func GetTopic(w http.ResponseWriter, r *http.Request) {
-	topicID, err := extractIDFromPath(r)
-	if err != nil {
-		http.Error(w, "Invalid topic ID", http.StatusBadRequest)
-		return
-	}
-
+func GetTopic(w http.ResponseWriter, r *http.Request, topicID int) {
 	topic, err := repository.GetTopicByID(topicID)
 	if err != nil {
 		http.Error(w, "Topic not found", http.StatusNotFound)
@@ -65,10 +53,16 @@ func GetTopic(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(topic)
 }
 
-func UpdateTopic(w http.ResponseWriter, r *http.Request) {
+func UpdateTopic(w http.ResponseWriter, r *http.Request, topicID int) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
-	topicID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	var req struct {
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
 	ownerID, err := repository.GetTopicOwner(topicID)
 	if err != nil {
@@ -81,14 +75,7 @@ func UpdateTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req UpdateTopicRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Title == "" {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	err = repository.UpdateTopic(topicID, req.Title)
-	if err != nil {
+	if err := repository.UpdateTopic(topicID, req.Title); err != nil {
 		http.Error(w, "Failed to update topic", http.StatusInternalServerError)
 		return
 	}
@@ -96,9 +83,8 @@ func UpdateTopic(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteTopic(w http.ResponseWriter, r *http.Request) {
+func DeleteTopic(w http.ResponseWriter, r *http.Request, topicID int) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
-	topicID, _ := strconv.Atoi(r.URL.Query().Get("id"))
 
 	err := repository.DeleteTopic(topicID, userID)
 	if err != nil {

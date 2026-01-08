@@ -14,6 +14,7 @@ type contextKey string
 
 const UserIDKey contextKey = "userID"
 
+// AuthMiddleware validates JWT and injects userID into context
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -40,8 +41,18 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		userID := int(claims["user_id"].(float64))
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+			return
+		}
+
+		uidFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			http.Error(w, "Invalid user ID in token", http.StatusUnauthorized)
+			return
+		}
+		userID := int(uidFloat)
 
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))

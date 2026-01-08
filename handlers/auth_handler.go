@@ -19,15 +19,13 @@ type Credentials struct {
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
-	json.NewDecoder(r.Body).Decode(&creds)
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil || creds.Username == "" || creds.Password == "" {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword(
-		[]byte(creds.Password),
-		bcrypt.DefaultCost,
-	)
-
-	err := repository.CreateUser(creds.Username, string(hashedPassword))
-	if err != nil {
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
+	if err := repository.CreateUser(creds.Username, string(hashedPassword)); err != nil {
 		http.Error(w, "Username already exists", http.StatusBadRequest)
 		return
 	}
@@ -37,7 +35,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 func Login(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
-	json.NewDecoder(r.Body).Decode(&creds)
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil || creds.Username == "" || creds.Password == "" {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
 	user, storedHash, err := repository.GetUserByUsername(creds.Username)
 	if err != nil {
@@ -45,8 +46,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(creds.Password))
-	if err != nil {
+	if bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(creds.Password)) != nil {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
