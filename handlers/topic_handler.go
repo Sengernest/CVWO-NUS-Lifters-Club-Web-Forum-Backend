@@ -8,7 +8,6 @@ import (
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 )
 
-// CreateTopic expects AuthMiddleware to set userID in context
 func CreateTopic(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 

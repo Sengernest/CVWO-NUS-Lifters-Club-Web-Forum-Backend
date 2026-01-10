@@ -13,16 +13,16 @@ import (
 )
 
 func main() {
-	// Connect DB
+
 	db.ConnectDatabase()
 
 	mux := http.NewServeMux()
 
-	// --- Public Auth Routes ---
+	//Public Auth Routes
 	mux.HandleFunc("/register", middleware.Cors(handlers.Register))
 	mux.HandleFunc("/login", middleware.Cors(handlers.Login))
 
-	// --- Topics ---
+	//Public Topic Route
 	mux.HandleFunc("/topics", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -81,7 +81,7 @@ func main() {
 		}
 	}))
 
-	// --- Posts ---
+	//Post Routes
 	mux.HandleFunc("/posts", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -146,7 +146,7 @@ func main() {
 		}
 	}))
 
-	// --- Comments ---
+	//Comments Routes
 	mux.HandleFunc("/comments/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 		if len(parts) < 2 {
@@ -183,7 +183,7 @@ func main() {
 		}
 	}))
 
-	// --- Default ---
+	//Default Route
 	mux.HandleFunc("/", middleware.Cors(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "NUS Lifters Club backend running with SQLite")
 	}))

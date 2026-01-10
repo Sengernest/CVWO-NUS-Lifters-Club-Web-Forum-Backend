@@ -9,10 +9,9 @@ import (
 	"CVWO-NUS-Lifters-Club-Web-Forum-Backend/backend/middleware"
 )
 
-// CreatePost expects AuthMiddleware
 func CreatePost(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
-	topicID, _ := r.Context().Value("topicID").(int) // optional, set via main
+	topicID, _ := r.Context().Value("topicID").(int) 
 
 	var req struct {
 		Title   string `json:"title"`

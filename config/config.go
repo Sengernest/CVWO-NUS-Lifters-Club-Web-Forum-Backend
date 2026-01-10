@@ -5,7 +5,6 @@ import (
 	"os"
 )
 
-// JWTKey is read from environment variable
 var JWTKey []byte
 
 func init() {

@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// ExtractID extracts an integer ID from either query param "id" or the last path segment
 func ExtractID(r *http.Request) (int, error) {
 	idStr := r.URL.Query().Get("id")
 	if idStr != "" {

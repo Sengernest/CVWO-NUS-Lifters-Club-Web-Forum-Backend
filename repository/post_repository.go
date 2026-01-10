@@ -106,7 +106,6 @@ func TogglePostLike(postID, userID int) (bool, error) {
 	err = tx.QueryRow("SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?", postID, userID).Scan(&exists)
 
 	if err == nil {
-		// Already liked: remove
 		if _, err := tx.Exec("DELETE FROM post_likes WHERE post_id = ? AND user_id = ?", postID, userID); err != nil {
 			tx.Rollback()
 			return false, err
@@ -118,8 +117,7 @@ func TogglePostLike(postID, userID int) (bool, error) {
 		tx.Commit()
 		return false, nil
 	}
-
-	// Not liked: insert
+	
 	if _, err := tx.Exec("INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)", postID, userID); err != nil {
 		tx.Rollback()
 		return false, err

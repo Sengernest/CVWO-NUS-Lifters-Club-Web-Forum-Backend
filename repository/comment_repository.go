@@ -73,7 +73,7 @@ func ToggleCommentLike(commentID, userID int) (bool, error) {
 	var exists int
 	err = tx.QueryRow("SELECT 1 FROM comment_likes WHERE comment_id = ? AND user_id = ?", commentID, userID).Scan(&exists)
 	if err == nil {
-		// Already liked: remove
+
 		if _, err := tx.Exec("DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?", commentID, userID); err != nil {
 			tx.Rollback()
 			return false, err
@@ -86,7 +86,6 @@ func ToggleCommentLike(commentID, userID int) (bool, error) {
 		return false, nil
 	}
 
-	// Not liked: insert
 	if _, err := tx.Exec("INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)", commentID, userID); err != nil {
 		tx.Rollback()
 		return false, err
@@ -97,5 +96,6 @@ func ToggleCommentLike(commentID, userID int) (bool, error) {
 	}
 
 	tx.Commit()
+	
 	return true, nil
 }
