@@ -68,11 +68,16 @@ https://cvwo-nus-lifters-club-web-forum-backend.onrender.com
 
 ---
 
-AI Usage Declaration
+## AI Usage Declaration
+AI tools (ChatGPT) were used strictly as a learning aid and code review
+assistant, in accordance with assignment guidelines.
 
+ChatGPT was used for:
+- Understanding deployment concepts such as environment variables,
+CORS configuration, and frontend–backend integration.
+- Interpreting error messages encountered during development
+(React, Axios, and Material UI).
+- Reviewing code structure and suggesting refactoring improvements.
+- Learning how to use Material UI components effectively.
 
-
-
-
-   
-
+---
