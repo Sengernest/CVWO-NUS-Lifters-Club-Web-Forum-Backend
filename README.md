@@ -34,13 +34,26 @@ NUS Lifters Web Forum is a full-stack web forum application that allows users to
 ## Setup Instructions
 
 ### Backend Setup
-1. Clone the backend repo: https://github.com/Sengernest/CVWO-NUS-Lifters-Club-Web-Forum-Backend.git
-2. Go into the directory which the repo was cloned
-3. Run the server using this command:
-    ```bash
-    go run main.go
-    
-4. Backend will run on
+1. Clone the backend repository:  
+   https://github.com/Sengernest/CVWO-NUS-Lifters-Club-Web-Forum-Backend.git
+2. Navigate into the cloned directory
+3. Before running the server, a JWT secret key must be set as an environment variable in the terminal:
+   - **Windows (PowerShell)**  
+     ```powershell
+     $env:JWT_KEY="cvwo-secret-key"
+     ```
+   - **Windows (Command Prompt)**  
+     ```cmd
+     set JWT_KEY=cvwo-secret-key
+     ```
+   - **macOS / Linux**  
+     ```bash
+     export JWT_KEY="cvwo-secret-key"
+     ```
+4. Run the backend server:
+   ```bash
+   go run main.go
+5. Backend will run on
    ```bash
    https://localhost8080
 
@@ -69,7 +82,7 @@ https://cvwo-nus-lifters-club-web-forum-backend.onrender.com
 ---
 
 ## AI Usage Declaration
-AI tools (ChatGPT) were used strictly as a learning aid and code review
+AI tool (ChatGPT) was used strictly as a learning aid and code review
 assistant, in accordance with assignment guidelines.
 
 ChatGPT was used for:
